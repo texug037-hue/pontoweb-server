@@ -5,74 +5,41 @@ const app = express();
 app.use(cors({ origin: '*' }));
 app.use(express.json());
 
-async function tentarLogin(email, senha, domain) {
-  const endpoints = [
-    'https://www.rhid.com.br/v2/api.svc/conecte-se',
-    'https://www.rhid.com.br/v2/api/auth/login',
-    'https://www.rhid.com.br/v2/api/login',
-  ];
-  const payloads = [
-    { email, password: senha, domain },
-    { email, senha, domain },
-    { login: email, password: senha, domain },
-  ];
-
-  for (const endpoint of endpoints) {
-    for (const payload of payloads) {
-      try {
-        const r = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify(payload)
-        });
-        const text = await r.text();
-        console.log('Endpoint:', endpoint, 'Status:', r.status, 'Resp:', text.slice(0, 200));
-        if (text.trim().startsWith('{') || text.trim().startsWith('[')) {
-          const data = JSON.parse(text);
-          const token = data.accessToken || data.token || data.access_token;
-          if (token) return { token };
-          if (data.listCustomer && data.listCustomer.length > 0) {
-            return { listCustomer: data.listCustomer, data };
-          }
-          if (r.ok) return { data };
-        }
-      } catch(e) {
-        console.log('Erro:', endpoint, e.message);
-      }
-    }
-  }
-  return null;
-}
-
 app.post('/api/rhid/login', async (req, res) => {
   const { email, senha } = req.body;
   try {
-    let result = await tentarLogin(email, senha, '');
-    if (result && result.listCustomer) {
-      const domain = result.listCustomer[0].domain;
-      result = await tentarLogin(email, senha, domain);
-    }
-    if (result && result.token) return res.json({ token: result.token });
-    return res.status(401).json({ erro: 'Login invalido', debug: result });
+    const r = await fetch('https://www.rhid.com.br/v2/login.svc/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json;charset=UTF-8',
+        'Accept': 'application/json, text/plain, /',
+        'Origin': 'https://www.rhid.com.br',
+        'Referer': 'https://www.rhid.com.br/v2/',
+      },
+      body: JSON.stringify({ domain: null, email: email, password: senha })
+    });
+    const data = await r.json();
+    console.log('RHiD login resposta:', JSON.stringify(data).slice(0, 300));
+    const token = data.accessToken || data.token || data.access_token;
+    if (token) return res.json({ token });
+    return res.status(401).json({ erro: data.error || 'Login invalido', debug: data });
   } catch (e) {
+    console.log('Erro:', e.message);
     res.status(500).json({ erro: e.message });
   }
 });
 
-app.get('/api/rhid/teste', async (req, res) => {
-  const { email, senha } = req.query;
-  const result = await tentarLogin(email, senha, '');
-  res.json(result || { erro: 'Nenhum endpoint funcionou' });
-});
-
 app.get('/api/rhid/marcacoes', async (req, res) => {
   const { token, inicio, fim } = req.query;
-  const url = 'https://www.rhid.com.br/v2/api.svc/apuracao?data_inicio=' + inicio + '&data_fim=' + fim;
+  const url = 'https://www.rhid.com.br/v2/login.svc/ponto_diario?data_inicio=' + inicio + '&data_fim=' + fim;
   try {
-    const r = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
+    const r = await fetch(url, {
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Accept': 'application/json',
+        'Origin': 'https://www.rhid.com.br',
+      }
+    });
     const data = await r.json();
     res.json(data);
   } catch (e) {
