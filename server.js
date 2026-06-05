@@ -1,17 +1,20 @@
-const express = require('express');
-const cors = require('cors');
-const app = express();
+import express from 'express';
+import cors from 'cors';
 
+const app = express();
 app.use(cors({ origin: '*' }));
 app.use(express.json());
 
-// Login no RHiD
 app.post('/api/rhid/login', async (req, res) => {
   const { email, senha } = req.body;
   try {
     const r = await fetch('https://www.rhid.com.br/v2/api/auth/login', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Origin': 'https://www.rhid.com.br', 'Referer': 'https://www.rhid.com.br' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Origin': 'https://www.rhid.com.br',
+        'Referer': 'https://www.rhid.com.br/'
+      },
       body: JSON.stringify({ email, password: senha })
     });
     const data = await r.json();
@@ -24,13 +27,15 @@ app.post('/api/rhid/login', async (req, res) => {
   }
 });
 
-// Busca marcações
 app.get('/api/rhid/marcacoes', async (req, res) => {
   const { token, inicio, fim } = req.query;
   try {
     const r = await fetch(
       `https://www.rhid.com.br/v2/api/comprovantes_marcacao?data_inicio=${inicio}&data_fim=${fim}`,
-      { headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } }
+      { headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }}
     );
     const data = await r.json();
     res.json(data);
@@ -39,6 +44,10 @@ app.get('/api/rhid/marcacoes', async (req, res) => {
   }
 });
 
-app.get('/', (req, res) => res.json({ status: 'PontoWeb Server OK ✅' }));
+app.get('/', (req, res) => res.json({ status: 'PontoWeb Server OK' }));
 
-app.listen(process.env.PORT || 3001, () => console.log('Servidor OK porta', process.env.PORT || 3001));
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
+
+--
+Enviado de Notas rápido
