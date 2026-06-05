@@ -14,21 +14,40 @@ app.post('/api/rhid/login', async (req, res) => {
       body: JSON.stringify({ email: email, password: senha, domain: '' })
     });
     const data = await r.json();
-    console.log('RHiD:', JSON.stringify(data).slice(0, 300));
+    console.log('RHiD resposta completa:', JSON.stringify(data));
     if (data.listCustomer && data.listCustomer.length > 0) {
       const domain = data.listCustomer[0].domain;
+      console.log('Domain encontrado:', domain);
       const r2 = await fetch('https://www.rhid.com.br/v2/api.svc/conecte-se', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email, password: senha, domain: domain })
       });
       const data2 = await r2.json();
+      console.log('RHiD resposta 2:', JSON.stringify(data2));
       if (data2.accessToken) return res.json({ token: data2.accessToken });
     }
     if (data.accessToken) return res.json({ token: data.accessToken });
-    return res.status(401).json({ erro: data.error || 'Login invalido', rhid: data });
+    return res.status(401).json({ erro: data.error || 'Login invalido', debug: data });
   } catch (e) {
+    console.log('Erro:', e.message);
     res.status(500).json({ erro: e.message });
+  }
+});
+
+// Endpoint de teste - mostra resposta do RHiD sem precisar do app
+app.get('/api/rhid/teste', async (req, res) => {
+  const { email, senha } = req.query;
+  try {
+    const r = await fetch('https://www.rhid.com.br/v2/api.svc/conecte-se', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, password: senha, domain: '' })
+    });
+    const data = await r.json();
+    res.json(data);
+  } catch (e) {
+    res.json({ erro: e.message });
   }
 });
 
@@ -36,9 +55,7 @@ app.get('/api/rhid/marcacoes', async (req, res) => {
   const { token, inicio, fim } = req.query;
   const url = 'https://www.rhid.com.br/v2/api.svc/apuracao?data_inicio=' + inicio + '&data_fim=' + fim;
   try {
-    const r = await fetch(url, {
-      headers: { 'Authorization': 'Bearer ' + token }
-    });
+    const r = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
     const data = await r.json();
     res.json(data);
   } catch (e) {
